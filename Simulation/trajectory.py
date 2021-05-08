@@ -396,11 +396,11 @@ def minSomethingTraj(waypoints, times, order):
 
     # Constraint 1 - Starting position for every segment
     for i in range(n):
-        A[i][nb_coeff * i : nb_coeff * (i + 1)] = get_poly_cc(nb_coeff, 0, 0)
+        A[i][nb_coeff * i: nb_coeff * (i + 1)] = get_poly_cc(nb_coeff, 0, 0)
 
     # Constraint 2 - Ending position for every segment
     for i in range(n):
-        A[i + n][nb_coeff * i : nb_coeff * (i + 1)] = get_poly_cc(nb_coeff, 0, times[i])
+        A[i + n][nb_coeff * i: nb_coeff * (i + 1)] = get_poly_cc(nb_coeff, 0, times[i])
 
     # Constraint 3 - Starting position derivatives (up to order) are null
     for k in range(1, order):
@@ -414,7 +414,7 @@ def minSomethingTraj(waypoints, times, order):
     for i in range(n - 1):
         for k in range(1, nb_coeff - 1):
             A[2 * n + 2 * (order - 1) + i * 2 * (order - 1) + k - 1][
-                i * nb_coeff : (i * nb_coeff + nb_coeff * 2)
+                i * nb_coeff: (i * nb_coeff + nb_coeff * 2)
             ] = np.concatenate((get_poly_cc(nb_coeff, k, times[i]), -get_poly_cc(nb_coeff, k, 0)))
 
     # solve for the coefficients
@@ -459,21 +459,21 @@ def minSomethingTraj_stop(waypoints, times, order):
 
     # Constraint 1 - Starting position for every segment
     for i in range(n):
-        A[i][nb_coeff * i : nb_coeff * (i + 1)] = get_poly_cc(nb_coeff, 0, 0)
+        A[i][nb_coeff * i: nb_coeff * (i + 1)] = get_poly_cc(nb_coeff, 0, 0)
 
     # Constraint 2 - Ending position for every segment
     for i in range(n):
-        A[i + n][nb_coeff * i : nb_coeff * (i + 1)] = get_poly_cc(nb_coeff, 0, times[i])
+        A[i + n][nb_coeff * i: nb_coeff * (i + 1)] = get_poly_cc(nb_coeff, 0, times[i])
 
     # Constraint 3 - Starting position derivatives (up to order) for each segment are null
     for i in range(n):
         for k in range(1, order):
-            A[2 * n + k - 1 + i * (order - 1)][nb_coeff * i : nb_coeff * (i + 1)] = get_poly_cc(nb_coeff, k, 0)
+            A[2 * n + k - 1 + i * (order - 1)][nb_coeff * i: nb_coeff * (i + 1)] = get_poly_cc(nb_coeff, k, 0)
 
     # Constraint 4 - Ending position derivatives (up to order) for each segment are null
     for i in range(n):
         for k in range(1, order):
-            A[2 * n + (order - 1) * n + k - 1 + i * (order - 1)][nb_coeff * i : nb_coeff * (i + 1)] = get_poly_cc(
+            A[2 * n + (order - 1) * n + k - 1 + i * (order - 1)][nb_coeff * i: nb_coeff * (i + 1)] = get_poly_cc(
                 nb_coeff, k, times[i]
             )
 
@@ -521,22 +521,22 @@ def minSomethingTraj_faststop(waypoints, times, order):
     # Constraint 1 - Starting position for every segment
     for i in range(n):
         # print(i)
-        A[i][nb_coeff * i : nb_coeff * (i + 1)] = get_poly_cc(nb_coeff, 0, 0)
+        A[i][nb_coeff * i: nb_coeff * (i + 1)] = get_poly_cc(nb_coeff, 0, 0)
 
     # Constraint 2 - Ending position for every segment
     for i in range(n):
         # print(i+n)
-        A[i + n][nb_coeff * i : nb_coeff * (i + 1)] = get_poly_cc(nb_coeff, 0, times[i])
+        A[i + n][nb_coeff * i: nb_coeff * (i + 1)] = get_poly_cc(nb_coeff, 0, times[i])
 
     # Constraint 3 - Starting velocity for every segment is null
     for i in range(n):
         # print(i+2*n)
-        A[i + 2 * n][nb_coeff * i : nb_coeff * (i + 1)] = get_poly_cc(nb_coeff, 1, 0)
+        A[i + 2 * n][nb_coeff * i: nb_coeff * (i + 1)] = get_poly_cc(nb_coeff, 1, 0)
 
     # Constraint 4 - Ending velocity for every segment is null
     for i in range(n):
         # print(i+3*n)
-        A[i + 3 * n][nb_coeff * i : nb_coeff * (i + 1)] = get_poly_cc(nb_coeff, 1, times[i])
+        A[i + 3 * n][nb_coeff * i: nb_coeff * (i + 1)] = get_poly_cc(nb_coeff, 1, times[i])
 
     # Constraint 5 - Starting position derivatives (above velocity and up to order) are null
     for k in range(2, order):
@@ -553,7 +553,7 @@ def minSomethingTraj_faststop(waypoints, times, order):
         for k in range(2, nb_coeff - 2):
             # print(4*n+2*(order-2)+k-2+i*(nb_coeff-4))
             A[4 * n + 2 * (order - 2) + k - 2 + i * (nb_coeff - 4)][
-                i * nb_coeff : (i * nb_coeff + nb_coeff * 2)
+                i * nb_coeff: (i * nb_coeff + nb_coeff * 2)
             ] = np.concatenate((get_poly_cc(nb_coeff, k, times[i]), -get_poly_cc(nb_coeff, k, 0)))
 
     # solve for the coefficients
@@ -561,7 +561,7 @@ def minSomethingTraj_faststop(waypoints, times, order):
     return Coeff
 
 
-## Testing scripts
+# Testing scripts
 
 
 def testXYZposition(t):

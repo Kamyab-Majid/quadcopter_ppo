@@ -32,10 +32,9 @@ def sameAxisAnimation(t_all, waypoints, pos_all, quat_all, sDes_tr_all, Ts, para
     y_wp = waypoints[:, 1]
     z_wp = waypoints[:, 2]
 
-    if config.orient == "NED":
-        z = -z
-        zDes = -zDes
-        z_wp = -z_wp
+    z = -z
+    zDes = -zDes
+    z_wp = -z_wp
 
     fig = plt.figure()
     ax = p3.Axes3D(fig)
@@ -52,10 +51,7 @@ def sameAxisAnimation(t_all, waypoints, pos_all, quat_all, sDes_tr_all, Ts, para
 
     ax.set_xlim3d([mid_x - maxRange, mid_x + maxRange])
     ax.set_xlabel("X")
-    if config.orient == "NED":
-        ax.set_ylim3d([mid_y + maxRange, mid_y - maxRange])
-    elif config.orient == "ENU":
-        ax.set_ylim3d([mid_y - maxRange, mid_y + maxRange])
+    ax.set_ylim3d([mid_y + maxRange, mid_y - maxRange])
     ax.set_ylabel("Y")
     ax.set_zlim3d([mid_z - maxRange, mid_z + maxRange])
     ax.set_zlabel("Altitude")

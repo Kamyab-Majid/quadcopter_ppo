@@ -37,54 +37,7 @@ def quad_sim(t, Ts, quad, ctrl, wind, traj):
     return t
 
 
-def main():
-    start_time = time.time()
-
-    # Simulation Setup
-    # ---------------------------
-    Ti = 0
-    Ts = 0.005
-    Tf = 18
-    ifsave = 0
-
-    # Choose trajectory settings
-    # ---------------------------
-    ctrlOptions = ["xyz_pos", "xy_vel_z_pos", "xyz_vel"]
-    trajSelect = np.zeros(3)
-
-    # Select Control Type             (0: xyz_pos,                  1: xy_vel_z_pos,            2: xyz_vel)
-    ctrlType = ctrlOptions[0]
-    # Select Position Trajectory Type (0: hover,                    1: pos_waypoint_timed,      2: pos_waypoint_interp,
-    #                                  3: minimum velocity          4: minimum accel,           5: minimum jerk,           6: minimum snap
-    #                                  7: minimum accel_stop        8: minimum jerk_stop        9: minimum snap_stop
-    #                                 10: minimum jerk_full_stop   11: minimum snap_full_stop
-    #                                 12: pos_waypoint_arrived
-    trajSelect[0] = 0  # (changed): was 6
-    # Select Yaw Trajectory Type      (0: none                      1: yaw_waypoint_timed,      2: yaw_waypoint_interp     3: follow          4: zero)
-    trajSelect[1] = 0  # (changed): was 6
-    # Select if waypoint time is used, or if average speed is used to calculate waypoint time   (0: waypoint time,   1: average speed)
-    trajSelect[2] = 0
-    print("Control type: {}".format(ctrlType))
-
-    # Initialize Quadcopter, Controller, Wind, Result Matrixes
-    # ---------------------------
-    quad = Quadcopter(Ti)
-    traj = Trajectory(quad, ctrlType, trajSelect)
-    ctrl = Control(quad, traj.yawType)
-    wind = Wind("None", 2.0, 90, -15)
-
-    # Trajectory for First Desired States
-    # ---------------------------
-    sDes = traj.desiredState(0, Ts, quad)
-
-    # Generate First Commands
-    # ---------------------------
-    ctrl.controller(traj, quad, sDes, Ts)
-
-    # Initialize Result Matrixes
-    # ---------------------------
-    numTimeStep = int(Tf / Ts + 1)
-
+def init_data(quad, traj, ctrl, numTimeStep):
     t_all = np.zeros(numTimeStep)
     s_all = np.zeros([numTimeStep, len(quad.state)])
     pos_all = np.zeros([numTimeStep, len(quad.pos)])
@@ -98,6 +51,85 @@ def main():
     wMotor_all = np.zeros([numTimeStep, len(quad.wMotor)])
     thr_all = np.zeros([numTimeStep, len(quad.thr)])
     tor_all = np.zeros([numTimeStep, len(quad.tor)])
+    return (
+        t_all,
+        s_all,
+        pos_all,
+        vel_all,
+        quat_all,
+        omega_all,
+        euler_all,
+        sDes_traj_all,
+        sDes_calc_all,
+        w_cmd_all,
+        wMotor_all,
+        thr_all,
+        tor_all,
+    )
+
+
+def main():
+    start_time = time.time()
+
+    # Simulation Setup
+    # ---------------------------
+    Ti = 0
+    Ts = 0.005
+    Tf = 18
+    ifsave = 1
+
+    # Choose trajectory settings
+    # ---------------------------
+    ctrlOptions = ["xyz_pos", "xy_vel_z_pos", "xyz_vel"]
+    trajSelect = np.zeros(3)
+
+    # Select Control Type             (0: xyz_pos,                  1: xy_vel_z_pos,            2: xyz_vel)
+    ctrlType = ctrlOptions[1]
+    # Select Position Trajectory Type (0: hover,                    1: pos_waypoint_timed,      2: pos_waypoint_interp,
+    #                                  3: minimum velocity          4: minimum accel,           5: minimum jerk,           6: minimum snap
+    #                                  7: minimum accel_stop        8: minimum jerk_stop        9: minimum snap_stop
+    #                                 10: minimum jerk_full_stop   11: minimum snap_full_stop
+    #                                 12: pos_waypoint_arrived
+    trajSelect[0] = 6  # (changed): was 6
+    # Select Yaw Trajectory Type      (0: none                      1: yaw_waypoint_timed,      2: yaw_waypoint_interp     3: follow          4: zero)
+    trajSelect[1] = 6  # (changed): was 6
+    # Select if waypoint time is used, or if average speed is used to calculate waypoint time   (0: waypoint time,   1: average speed)
+    trajSelect[2] = 0
+    print("Control type: {}".format(ctrlType))
+
+    # Initialize Quadcopter, Controller, Wind, Result Matrixes
+    # ---------------------------
+    quad = Quadcopter(Ti)
+    traj = Trajectory(quad, ctrlType, trajSelect)
+    ctrl = Control(quad, traj.yawType)
+    wind = Wind("None", 2.0, 90, -15)
+
+    # Trajectory for First Desired States
+    # ---------------------------
+    sDes = traj.desiredState(0, Ts, quad)  # np.zeros(19)
+
+    # Generate First Commands
+    # ---------------------------
+    ctrl.controller(traj, quad, sDes, Ts)
+
+    # Initialize Result Matrixes
+    # ---------------------------
+    numTimeStep = int(Tf / Ts + 1)
+    (
+        t_all,
+        s_all,
+        pos_all,
+        vel_all,
+        quat_all,
+        omega_all,
+        euler_all,
+        sDes_traj_all,
+        sDes_calc_all,
+        w_cmd_all,
+        wMotor_all,
+        thr_all,
+        tor_all,
+    ) = init_data(quad, traj, ctrl, numTimeStep)
 
     t_all[0] = Ti
     s_all[0, :] = quad.state
@@ -124,6 +156,7 @@ def main():
         # print("{:.3f}".format(t))
         t_all[i] = t
         s_all[i, :] = quad.state
+        print(quad.state)
         pos_all[i, :] = quad.pos
         vel_all[i, :] = quad.vel
         quat_all[i, :] = quad.quat
@@ -132,6 +165,7 @@ def main():
         sDes_traj_all[i, :] = traj.sDes
         sDes_calc_all[i, :] = ctrl.sDesCalc
         w_cmd_all[i, :] = ctrl.w_cmd
+        print(ctrl.w_cmd)
         wMotor_all[i, :] = quad.wMotor
         thr_all[i, :] = quad.thr
         tor_all[i, :] = quad.tor

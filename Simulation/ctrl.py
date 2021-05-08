@@ -4,6 +4,15 @@ author: John Bass
 email: john.bobzwik@gmail.com
 license: MIT
 Please feel free to use and modify this, but keep the above information. Thanks!
+The control algorithm is strongly inspired by the PX4 multicopter control algorithm.
+It is a cascade controller, where the position error (difference between the desired position 
+and the current position) generates a velocity setpoint, the velocity error then creates a 
+desired thrust magnitude and orientation, which is then interpreted as a desired rotation 
+(expressed as a quaternion). The quaternion error then generates angular rate setpoints, which
+then creates desired moments. The states are controlled using a PID control. Position and Attitude
+control uses a simple Proportional (P) gain, while Velocity and Rate uses Proportional and
+Derivative (D) gains. Velocity also has an optional Integral (I) gain if wind is activated in
+the simulation.
 """
 
 # Position and Velocity Control based on https://github.com/PX4/Firmware/blob/master/src/modules/mc_pos_control/PositionControl.cpp
@@ -191,29 +200,17 @@ class Control:
         # Hover thrust (m*g) is sent as a Feed-Forward term, in order to
         # allow hover when the position and velocity error are nul
         vel_z_error = self.vel_sp[2] - quad.vel[2]
-        if config.orient == "NED":
-            thrust_z_sp = (
-                vel_P_gain[2] * vel_z_error
-                - vel_D_gain[2] * quad.vel_dot[2]
-                + quad.params["mB"] * (self.acc_sp[2] - quad.params["g"])
-                + self.thr_int[2]
-            )
-        elif config.orient == "ENU":
-            thrust_z_sp = (
-                vel_P_gain[2] * vel_z_error
-                - vel_D_gain[2] * quad.vel_dot[2]
-                + quad.params["mB"] * (self.acc_sp[2] + quad.params["g"])
-                + self.thr_int[2]
-            )
+        thrust_z_sp = (
+            vel_P_gain[2] * vel_z_error
+            - vel_D_gain[2] * quad.vel_dot[2]
+            + quad.params["mB"] * (self.acc_sp[2] - quad.params["g"])
+            + self.thr_int[2]
+        )
 
         # Get thrust limits
-        if config.orient == "NED":
-            # The Thrust limits are negated and swapped due to NED-frame
-            uMax = -quad.params["minThr"]
-            uMin = -quad.params["maxThr"]
-        elif config.orient == "ENU":
-            uMax = quad.params["maxThr"]
-            uMin = quad.params["minThr"]
+        # The Thrust limits are negated and swapped due to NED-frame
+        uMax = -quad.params["minThr"]
+        uMin = -quad.params["maxThr"]
 
         # Apply Anti-Windup in D-direction
         stop_int_D = (thrust_z_sp >= uMax and vel_z_error >= 0.0) or (thrust_z_sp <= uMin and vel_z_error <= 0.0)

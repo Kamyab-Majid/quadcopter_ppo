@@ -238,7 +238,8 @@ class Quadcopter:
         return sdot
 
     def update(self, t, Ts, cmd, wind):
-
+        # print(cmd)
+        # print(self.state)
         prev_vel = self.vel
         prev_omega = self.omega
 
