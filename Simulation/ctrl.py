@@ -292,8 +292,10 @@ class Control:
         qe_red = np.zeros(4)
         qe_red[0] = np.dot(e_z, e_z_d) + sqrt(norm(e_z) ** 2 * norm(e_z_d) ** 2)
         qe_red[1:4] = np.cross(e_z, e_z_d)
-        qe_red = utils.vectNormalize(qe_red)
-
+        if max(abs(qe_red)) < 3e-10:
+            qe_red[0] = 1.0
+        else:
+            qe_red = utils.vectNormalize(qe_red)
         # Reduced desired quaternion (reduced because it doesn't consider the desired Yaw angle)
         self.qd_red = utils.quatMultiply(qe_red, quad.quat)
 

@@ -39,6 +39,7 @@ class Quadcopter:
 
         self.pos = self.state[0:3]
         self.quat = self.state[3:7]
+
         self.vel = self.state[7:10]
         self.omega = self.state[10:13]
         self.wMotor = np.array([self.state[13], self.state[15], self.state[17], self.state[19]])
@@ -211,7 +212,7 @@ class Quadcopter:
         # State Derivative Vector
         # ---------------------------
         sdot = np.zeros([21])
-        sdot[0] = DynamicsDot[0]
+        sdot[0:13] = DynamicsDot[0:13].reshape(13)
         sdot[1] = DynamicsDot[1]
         sdot[2] = DynamicsDot[2]
         sdot[3] = DynamicsDot[3]
@@ -238,8 +239,6 @@ class Quadcopter:
         return sdot
 
     def update(self, t, Ts, cmd, wind):
-        # print(cmd)
-        # print(self.state)
         prev_vel = self.vel
         prev_omega = self.omega
 

@@ -29,7 +29,8 @@ def quad_sim(t, Ts, quad, ctrl, wind, traj):
     # Trajectory for Desired States
     # ---------------------------
     sDes = traj.desiredState(t, Ts, quad)
-
+    # print(ctrl.w_cmd)
+    print(quad.state)
     # Generate Commands (for next iteration)
     # ---------------------------
     ctrl.controller(traj, quad, sDes, Ts)
@@ -84,7 +85,7 @@ def main():
     trajSelect = np.zeros(3)
 
     # Select Control Type             (0: xyz_pos,                  1: xy_vel_z_pos,            2: xyz_vel)
-    ctrlType = ctrlOptions[1]
+    ctrlType = ctrlOptions[0]
     # Select Position Trajectory Type (0: hover,                    1: pos_waypoint_timed,      2: pos_waypoint_interp,
     #                                  3: minimum velocity          4: minimum accel,           5: minimum jerk,           6: minimum snap
     #                                  7: minimum accel_stop        8: minimum jerk_stop        9: minimum snap_stop
@@ -94,7 +95,7 @@ def main():
     # Select Yaw Trajectory Type      (0: none                      1: yaw_waypoint_timed,      2: yaw_waypoint_interp     3: follow          4: zero)
     trajSelect[1] = 6  # (changed): was 6
     # Select if waypoint time is used, or if average speed is used to calculate waypoint time   (0: waypoint time,   1: average speed)
-    trajSelect[2] = 0
+    trajSelect[2] = 1
     print("Control type: {}".format(ctrlType))
 
     # Initialize Quadcopter, Controller, Wind, Result Matrixes
@@ -156,7 +157,6 @@ def main():
         # print("{:.3f}".format(t))
         t_all[i] = t
         s_all[i, :] = quad.state
-        print(quad.state)
         pos_all[i, :] = quad.pos
         vel_all[i, :] = quad.vel
         quat_all[i, :] = quad.quat
@@ -165,7 +165,6 @@ def main():
         sDes_traj_all[i, :] = traj.sDes
         sDes_calc_all[i, :] = ctrl.sDesCalc
         w_cmd_all[i, :] = ctrl.w_cmd
-        print(ctrl.w_cmd)
         wMotor_all[i, :] = quad.wMotor
         thr_all[i, :] = quad.thr
         tor_all[i, :] = quad.tor

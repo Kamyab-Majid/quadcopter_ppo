@@ -11,7 +11,8 @@ from numpy import pi
 import matplotlib.pyplot as plt
 import mpl_toolkits.mplot3d.axes3d as p3
 from matplotlib import animation
-
+import networkx as nx
+from matplotlib.animation import FuncAnimation, PillowWriter 
 import utils
 import config
 
@@ -169,7 +170,7 @@ def sameAxisAnimation(t_all, waypoints, pos_all, quat_all, sDes_tr_all, Ts, para
 
     if ifsave:
         line_ani.save(
-            "Gifs/Raw/animation_{0:.0f}_{1:.0f}.gif".format(xyzType, yawType), dpi=80, writer="imagemagick", fps=25
+            "animation_{0:.0f}_{1:.0f}.gif".format(xyzType, yawType), dpi=80, writer="imagemagick", fps=25
         )
 
     plt.show()
