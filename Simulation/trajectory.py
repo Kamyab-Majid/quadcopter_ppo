@@ -29,15 +29,15 @@ class Trajectory:
         self.averVel = trajSelect[2]
 
         t_wps, wps, y_wps, v_wp = makeWaypoints()
-        self.t_wps = t_wps
-        self.wps = wps
-        self.y_wps = y_wps
-        self.v_wp = v_wp
+        self.t_wps = t_wps  # time of waypoints
+        self.wps = wps  # location of waypoints
+        self.y_wps = y_wps  # Yaw of waypoints
+        self.v_wp = v_wp  # location of waypoints
 
         self.end_reached = 0
 
         if self.ctrlType == "xyz_pos":
-            self.T_segment = np.diff(self.t_wps)
+            self.T_segment = np.diff(self.t_wps)  # time segment of each segment
 
             if self.averVel == 1:
                 distance_segment = self.wps[1:] - self.wps[:-1]
@@ -505,7 +505,7 @@ def minSomethingTraj_faststop(waypoints, times, order):
     this function generates trajectories with only null velocities. Accelerations and above derivatives are continuous.
     This will make the drone stop for an instant at each waypoint, and then leave in the same direction it came from.
     """
-
+    print('waypoints', waypoints)
     n = len(waypoints) - 1
     nb_coeff = order * 2
 
