@@ -30,7 +30,7 @@ class ActorCritic(nn.Module):
     def forward(self, x):
         value = self.critic(x)
         mu = self.actor(x)
-        std = self.log_std.exp().expand_as(mu) * 0.1
+        std = self.log_std.exp().expand_as(mu) * 0.2
         dist = Normal(mu, std)
         return dist, value
 

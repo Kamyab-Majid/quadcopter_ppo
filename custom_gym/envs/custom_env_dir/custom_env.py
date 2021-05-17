@@ -20,7 +20,7 @@ class CustomEnv(gym.Env, ABC):
         self.ang_velocity_range = ang_velocity_range = (-1, 1)
         self.q_range = qrange = (-0.3, 0.3)
         self.motor_range = motor_range = (400, 700)
-        self.motor_d_range = motor_d_range = (-800, 600)
+        self.motor_d_range = motor_d_range = (-2000, 2000)
         self.observation_space_domain = {
             "x": default_range,
             "y": default_range,
@@ -148,7 +148,8 @@ class CustomEnv(gym.Env, ABC):
         self.tor_all[0, :] = self.quad.tor
         self.counter = 0
         self.save_counter = 0
-        self.control_input = np.array((0, 0, 0, 0), dtype=float)
+        self.control_input = np.array((522.984714071469, 522.984714071469, 522.984714071469, 522.984714071469), dtype=float)
+        self.find_next_state()
         self.jj = 0
         self.counter = 0
 
@@ -164,13 +165,11 @@ class CustomEnv(gym.Env, ABC):
 
     def action_wrapper(self, current_action: list) -> np.array:
         # [-1, 1]
-        current_action = np.array(current_action, dtype=float) 
-        current_action = (
+        current_action = np.clip(current_action, -1, 1)
+        self.control_input = (
             current_action * (self.high_action_space - self.low_action_space) / 2
-            + (self.high_action_space + self.low_action_space) / 2
+            + (self.high_action_space + self.low_action_space) / 2 + 522.984714071469
         )
-        self.control_input = np.clip(current_action, self.low_action_space, self.high_action_space) + 522.9847140714692
-        # print('control_input_custom_env', self.control_input)
 
     def find_next_state(self) -> list:
         self.quad.update(self.t, self.Ts, self.control_input, self.wind)  # self.control_input = self.ctrl.w_cmd
@@ -201,11 +200,11 @@ class CustomEnv(gym.Env, ABC):
         observation = list(quad.state.copy())
         for iii in range(len(self.high_obs_space)):
             current_range = self.observation_space_domain[self.states_str[iii]]
-            observation[iii] = (observation[iii] - sum(current_range) / 2) / current_range[1]
+            observation[iii] = 2 * (observation[iii] - current_range[0]) / (current_range[1] - current_range[0]) -1
         self.s_all[i, :] = observation
         return observation
 
-    def reward_function(self) -> float:
+    def reward_function(self, observation) -> float:
         # add reward slope to the reward
         # TODO: normalizing reward
         # TODO: adding reward gap
@@ -213,7 +212,8 @@ class CustomEnv(gym.Env, ABC):
         # error_ang = np.linalg.norm((abs(self.quad.state[3:7]).reshape(12)), 1)
         # error_v = np.linalg.norm((abs(self.quad.state[7:10]).reshape(12)), 1)
         # error_vang = np.linalg.norm((abs(self.quad.state[10:12]).reshape(12)), 1)
-        error = -np.linalg.norm((abs(self.s_all[self.counter, 0:12]).reshape(12)), 1) + 0.05
+        # error = -np.linalg.norm((abs(self.s_all[self.counter, 0:12]).reshape(12)), 1) + 0.05
+        error = -np.linalg.norm(observation[0:12], 1) + 1
         self.control_rewards[self.counter] = self.all_rewards[self.counter] = reward = error
         # for i in range(12):
         #     self.reward_array[i] = abs(self.current_states[i]) / self.default_range[1]
@@ -231,11 +231,11 @@ class CustomEnv(gym.Env, ABC):
         for i in range(len(self.high_obs_space)):
             if (abs(self.quad.state[i])) > self.high_obs_space[i]:
                 self.diverge_list.append((tuple(self.observation_space_domain.keys())[i], self.quad.state[i]))
+                self.saver.diverge_save(tuple(self.observation_space_domain.keys())[i], self.quad.state[i])
                 self.diverge_counter += 1
-                if self.diverge_counter == 5:
+                if self.diverge_counter == 2000:
                     self.diverge_counter = 0
-                    print(self.diverge_list)
-                    self.diverge_list = []
+                    print((tuple(self.observation_space_domain.keys())[i], self.quad.state[i]))
                 self.jj = 1
                 return True
         if self.counter >= self.numTimeStep - 1:  # number of timesteps
@@ -287,12 +287,14 @@ class CustomEnv(gym.Env, ABC):
         except OverflowError or ValueError or IndexError:
             self.jj = 1
         observation = self.observation_function()
-        reward = self.reward_function()
+        reward = self.reward_function(observation)
         self.done = self.check_diverge()
         if self.jj == 1:
             observation = list((self.s_all[self.counter]) - self.default_range[0])
             reward = self.min_reward
         if self.done:
+            if self.counter > 0:
+                print(self.counter)
             self.done_jobs()
 
         self.counter += 1

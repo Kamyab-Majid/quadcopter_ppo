@@ -31,12 +31,16 @@ class save_files:
         self.date = datetime.now().strftime("%Y_%m_%d_%I_%M_%S_%p")
         self.current_dir = os.getcwd()
         self.path_step_reward = "results/reward_step"
+        self.path_diverge = "results/diverge_data"
+
         self.path_best_reward = f"results/bestreward{self.date}"
         self.path_model = f"results/model{self.date}"
         self._save_init(self.path_step_reward)
         self._save_init(self.path_best_reward)
         self._save_init(self.path_model)
+        self._save_init(self.path_diverge)
         self.index = 1
+        self.index_diverge = 1
         fields = ['counter', 'step', 'reward']
         with open(f"{self.path_step_reward}/reward_step{self.date}.csv", "a") as f:
             writer = csv.writer(f)
@@ -67,3 +71,10 @@ class save_files:
     def model_save(self, model):
         date = datetime.now().strftime("%Y_%m_%d_%I_%M_%S_%p")
         torch.save(model.state_dict(), f"{self.path_model}/model{date}.pt")
+
+    def diverge_save(self, diverged_state, diverged_value):
+        fields = [self.index_diverge, diverged_state, diverged_value]
+        with open(f"{self.path_diverge}/diverged_epsiodes_states{self.date}.csv", "a") as f:
+            writer = csv.writer(f)
+            writer.writerow(fields)
+        self.index_diverge += 1
