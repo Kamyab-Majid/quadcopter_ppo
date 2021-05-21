@@ -10,8 +10,7 @@ from quadFiles.quad import Quadcopter
 from utils.windModel import Wind
 import utils
 import config
-from run_3D_simulation import main, init_data, quad_sim
-
+from run_3D_simulation import main, quad_sim
 
 class CustomEnv(gym.Env, ABC):
     def __init__(self):
@@ -43,12 +42,17 @@ class CustomEnv(gym.Env, ABC):
             "wdotM3": motor_d_range,
             "wM4": motor_range,
             "wdotM4": motor_d_range,
+            "deltacol_p": motor_range,
+            "deltalat_p": motor_range,
+            "deltalon_p": motor_range,
+            "deltaped_p": motor_range,
         }
         self.states_str = list(self.observation_space_domain.keys())
-        self.low_obs_space = np.array(list(zip(*self.observation_space_domain.values()))[0], dtype=float)
-        self.high_obs_space = np.array(list(zip(*self.observation_space_domain.values()))[1], dtype=float)
+        #  observation space to [-1,1]
+        self.low_obs_space = np.array(tuple(zip(*self.observation_space_domain.values()))[0], dtype=float) * 0 - 1
+        self.high_obs_space = np.array(tuple(zip(*self.observation_space_domain.values()))[1], dtype=float) * 0 + 1
         self.observation_space = spaces.Box(low=self.low_obs_space, high=self.high_obs_space, dtype=float)
-        self.default_act_range = default_act_range = (-100, 100)
+        self.default_act_range = default_act_range = motor_range
         self.action_space_domain = {
             "deltacol": default_act_range,
             "deltalat": default_act_range,
@@ -58,10 +62,12 @@ class CustomEnv(gym.Env, ABC):
             # "lambda1": (0.5, 10), "lambda2": (0.1, 5), "lambda3": (0.1, 5), "lambda4": (0.1, 5),
             # "eta1": (0.2, 5), "eta2": (0.1, 5), "eta3": (0.1, 5), "eta4": (0.1, 5),
         }
-        self.low_action_space = np.array(list(zip(*self.action_space_domain.values()))[0], dtype=float)
-        self.high_action_space = np.array(list(zip(*self.action_space_domain.values()))[1], dtype=float)
+        self.low_action = np.array(tuple(zip(*self.action_space_domain.values()))[0], dtype=float)
+        self.high_action = np.array(tuple(zip(*self.action_space_domain.values()))[1], dtype=float)
+        self.low_action_space = self.low_action * 0 - 1
+        self.high_action_space = self.high_action * 0 + 1
         self.action_space = spaces.Box(low=self.low_action_space, high=self.high_action_space, dtype=float)
-        self.min_reward = -13
+        self.min_reward = -11
         self.high_action_diff = 0.2
         obs_header = str(list(self.observation_space_domain.keys()))[1:-1]
         act_header = str(list(self.action_space_domain.keys()))[1:-1]
@@ -89,7 +95,7 @@ class CustomEnv(gym.Env, ABC):
         self.start_time = time.time()
         self.Ti = 0
         self.Ts = 0.005
-        self.Tf = 18
+        self.Tf = 5
         self.reward_check_time = 0.7 * self.Tf
         self.ifsave = 0
         self.ctrlOptions = ["xyz_pos", "xy_vel_z_pos", "xyz_vel"]
@@ -102,8 +108,6 @@ class CustomEnv(gym.Env, ABC):
         self.traj = Trajectory(self.quad, self.ctrlType, self.trajSelect)
         self.ctrl = Control(self.quad, self.traj.yawType)
         self.wind = Wind("None", 2.0, 90, -15)
-        self.sDes = self.traj.desiredState(0, self.Ts, self.quad)  # np.zeros(19)
-        self.ctrl.controller(self.traj, self.quad, self.sDes, self.Ts)
         self.numTimeStep = int(self.Tf / self.Ts + 1)
         self.longest_num_step = 0
         self.best_reward = float("-inf")
@@ -113,8 +117,9 @@ class CustomEnv(gym.Env, ABC):
     def reset(self):
         #  initialization
         self.t = 0
-        sDes = self.traj.desiredState(self.t, self.Ts, self.quad)
-        self.ctrl.controller(self.traj, self.quad, sDes, self.Ts)
+        self.sDes = self.traj.desiredState(self.t, self.Ts, self.quad)
+        self.ctrl.controller(self.traj, self.quad, self.sDes, self.Ts)
+        self.control_input = self.ctrl.w_cmd.copy()
         (
             self.t_all,
             self.s_all,
@@ -135,6 +140,7 @@ class CustomEnv(gym.Env, ABC):
         self.all_rewards = np.zeros((self.numTimeStep, 1))
         self.t_all[0] = self.Ti
         observation = self.quad.state.copy()
+        observation = np.concatenate((observation, self.control_input), axis=0)
         self.pos_all[0, :] = self.quad.pos
         self.vel_all[0, :] = self.quad.vel
         self.quat_all[0, :] = self.quad.quat
@@ -142,33 +148,29 @@ class CustomEnv(gym.Env, ABC):
         self.euler_all[0, :] = self.quad.euler
         self.sDes_traj_all[0, :] = self.traj.sDes
         self.sDes_calc_all[0, :] = self.ctrl.sDesCalc
-        self.w_cmd_all[0, :] = self.ctrl.w_cmd
+        self.w_cmd_all[0, :] = self.control_input
         self.wMotor_all[0, :] = self.quad.wMotor
         self.thr_all[0, :] = self.quad.thr
         self.tor_all[0, :] = self.quad.tor
-        self.counter = 0
+        self.counter = 1
         self.save_counter = 0
-        self.control_input = np.array((522.984714071469, 522.984714071469, 522.984714071469, 522.984714071469), dtype=float)
         self.find_next_state()
         self.jj = 0
-        self.counter = 0
-
-
         # self.quad.state[0:12] = self.initial_states = list((np.random.rand(12) * 0.02 - 0.01))
-        # self.quad.state[0:12] = [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0]
+        self.quad.state[0:12] = [0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0]
         self.done = False
-        for i in range(len(self.high_obs_space)):
-            current_range = self.observation_space_domain[self.states_str[i]]
-            observation[i] = (observation[i] - sum(current_range) / 2) / current_range[1]
+        for iii in range(len(self.high_obs_space)):
+            current_range = self.observation_space_domain[self.states_str[iii]]
+            observation[iii] = 2 * (observation[iii] - current_range[0]) / (current_range[1] - current_range[0]) - 1
         self.s_all[0, :] = observation
-        return observation
+        self.integral_error = 0
+        return list(observation)
 
     def action_wrapper(self, current_action: list) -> np.array:
-        # [-1, 1]
         current_action = np.clip(current_action, -1, 1)
+        self.normilized_actions = current_action
         self.control_input = (
-            current_action * (self.high_action_space - self.low_action_space) / 2
-            + (self.high_action_space + self.low_action_space) / 2 + 522.984714071469
+            (current_action + 1) * (self.high_action - self.low_action) / 2 + self.low_action
         )
 
     def find_next_state(self) -> list:
@@ -176,16 +178,16 @@ class CustomEnv(gym.Env, ABC):
         # self.quad.update(self.t, self.Ts, self.ctrl.w_cmd, self.wind)
         self.t += self.Ts
         # self.control_input = self.ctrl.w_cmd.copy()
-        # sDes = self.traj.desiredState(self.t, self.Ts, self.quad)
+        self.sDes = self.traj.desiredState(self.t, self.Ts, self.quad)
         # print('state', self.quad.state)
         # print(' ctrl', self.ctrl.w_cmd)
-        # self.ctrl.controller(self.traj, self.quad, sDes, self.Ts)
+        self.ctrl.controller(self.traj, self.quad, self.sDes, self.Ts)
 
     def observation_function(self) -> list:
         i = self.counter
         quad = self.quad
         self.t_all[i] = self.t
-        self.s_all[i, :] = quad.state
+        self.s_all[i, :] = np.concatenate((quad.state, self.control_input), axis=0)
         self.pos_all[i, :] = quad.pos
         self.vel_all[i, :] = quad.vel
         self.quat_all[i, :] = quad.quat
@@ -193,16 +195,17 @@ class CustomEnv(gym.Env, ABC):
         self.euler_all[i, :] = quad.euler
         self.sDes_traj_all[i, :] = self.traj.sDes
         self.sDes_calc_all[i, :] = self.ctrl.sDesCalc
-        self.w_cmd_all[i, :] = self.ctrl.w_cmd
+        self.w_cmd_all[i, :] = self.control_input
         self.wMotor_all[i, :] = quad.wMotor
         self.thr_all[i, :] = quad.thr
         self.tor_all[i, :] = quad.tor
-        observation = list(quad.state.copy())
+        observation = quad.state.copy()
+        observation = np.concatenate((observation, self.control_input), axis=0)
         for iii in range(len(self.high_obs_space)):
             current_range = self.observation_space_domain[self.states_str[iii]]
-            observation[iii] = 2 * (observation[iii] - current_range[0]) / (current_range[1] - current_range[0]) -1
+            observation[iii] = 2 * (observation[iii] - current_range[0]) / (current_range[1] - current_range[0]) - 1
         self.s_all[i, :] = observation
-        return observation
+        return list(observation)
 
     def reward_function(self, observation) -> float:
         # add reward slope to the reward
@@ -213,8 +216,15 @@ class CustomEnv(gym.Env, ABC):
         # error_v = np.linalg.norm((abs(self.quad.state[7:10]).reshape(12)), 1)
         # error_vang = np.linalg.norm((abs(self.quad.state[10:12]).reshape(12)), 1)
         # error = -np.linalg.norm((abs(self.s_all[self.counter, 0:12]).reshape(12)), 1) + 0.05
-        error = -np.linalg.norm(observation[0:12], 1) + 1
-        self.control_rewards[self.counter] = self.all_rewards[self.counter] = reward = error
+        error = 10 * (-np.linalg.norm(observation[0:12], 1) + 1)
+        self.control_rewards[self.counter] = error
+        self.integral_error = 0.1 * (0.99 * self.control_rewards[self.counter - 1] + 0.99 * self.integral_error)
+        reward = error.copy()
+        reward += self.integral_error
+        reward += -self.min_reward / self.numTimeStep
+        reward -= 0.000001 * sum(abs(self.control_input - self.w_cmd_all[self.counter - 1, :]))
+        reward += -0.0001 * np.linalg.norm(self.normilized_actions, 2)
+        self.all_rewards[self.counter] = reward
         # for i in range(12):
         #     self.reward_array[i] = abs(self.current_states[i]) / self.default_range[1]
         # reward = self.all_rewards[self.counter] = -sum(self.reward_array) + 0.17 / self.default_range[1]
@@ -225,11 +235,13 @@ class CustomEnv(gym.Env, ABC):
         # reward += -0.005 * sum(abs(self.all_actions[self.counter]))  # input reward
         # for i in (self.high_action_diff - self.all_actions[self.counter] - self.all_actions[self.counter - 1]) ** 2:
         #     reward += -min(0, i)
+        if self.counter > 100 : 
+            print(reward)
         return reward
 
     def check_diverge(self) -> bool:
         for i in range(len(self.high_obs_space)):
-            if (abs(self.quad.state[i])) > self.high_obs_space[i]:
+            if (abs(self.s_all[self.counter, i])) > self.high_obs_space[i]:
                 self.diverge_list.append((tuple(self.observation_space_domain.keys())[i], self.quad.state[i]))
                 self.saver.diverge_save(tuple(self.observation_space_domain.keys())[i], self.quad.state[i])
                 self.diverge_counter += 1
@@ -290,18 +302,46 @@ class CustomEnv(gym.Env, ABC):
         reward = self.reward_function(observation)
         self.done = self.check_diverge()
         if self.jj == 1:
-            observation = list((self.s_all[self.counter]) - self.default_range[0])
-            reward = self.min_reward
+            reward = self.min_reward 
         if self.done:
-            if self.counter > 0:
-                print(self.counter)
             self.done_jobs()
 
         self.counter += 1
         # self.make_constant(list(self.constant_dict.values()))
-        return observation, reward, self.done, {}
+        return list(observation), float(reward), self.done, {}
 
     def make_constant(self, true_list):
         for i in range(len(true_list)):
             if i == 1:
                 self.quad.state[i] = self.initial_states[i]
+
+
+def init_data(quad, traj, ctrl, numTimeStep):
+    t_all = np.zeros(numTimeStep)
+    s_all = np.zeros([numTimeStep, len(quad.state) + len(ctrl.w_cmd)])
+    pos_all = np.zeros([numTimeStep, len(quad.pos)])
+    vel_all = np.zeros([numTimeStep, len(quad.vel)])
+    quat_all = np.zeros([numTimeStep, len(quad.quat)])
+    omega_all = np.zeros([numTimeStep, len(quad.omega)])
+    euler_all = np.zeros([numTimeStep, len(quad.euler)])
+    sDes_traj_all = np.zeros([numTimeStep, len(traj.sDes)])
+    sDes_calc_all = np.zeros([numTimeStep, len(ctrl.sDesCalc)])
+    w_cmd_all = np.zeros([numTimeStep, len(ctrl.w_cmd)])
+    wMotor_all = np.zeros([numTimeStep, len(quad.wMotor)])
+    thr_all = np.zeros([numTimeStep, len(quad.thr)])
+    tor_all = np.zeros([numTimeStep, len(quad.tor)])
+    return (
+        t_all,
+        s_all,
+        pos_all,
+        vel_all,
+        quat_all,
+        omega_all,
+        euler_all,
+        sDes_traj_all,
+        sDes_calc_all,
+        w_cmd_all,
+        wMotor_all,
+        thr_all,
+        tor_all,
+    )
